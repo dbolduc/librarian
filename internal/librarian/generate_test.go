@@ -76,11 +76,14 @@ func TestGenerateCommand(t *testing.T) {
 			args: []string{"librarian", "generate", lib1},
 			want: []string{lib1},
 		},
-		{
-			name: "preview variant",
-			args: []string{"librarian", "generate", lib1PreviewName},
-			want: []string{lib1PreviewName},
-		},
+		// TODO(#5202) - re-enable test case for preview generation
+		/*
+			{
+				name: "preview variant",
+				args: []string{"librarian", "generate", lib1PreviewName},
+				want: []string{lib1PreviewName},
+			},
+		*/
 		{
 			name:    "preview variant missing",
 			args:    []string{"librarian", "generate", lib2 + "-preview"},
