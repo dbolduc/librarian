@@ -23,7 +23,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/googleapis/librarian/internal/command"
+	"github.com/googleapis/librarian/internal/git"
 	"github.com/googleapis/librarian/internal/semver"
 )
 
@@ -108,17 +108,9 @@ func isRenamedDependency(line, crateName string) bool {
 // shouldBumpManifestVersion checks if the manifest version needs to be bumped.
 // It returns false if the version has already been updated since the last tag.
 func shouldBumpManifestVersion(ctx context.Context, gitExe, lastTag, manifest string) (bool, error) {
-	delta := fmt.Sprintf("%s..HEAD", lastTag)
-	contents, err := command.Output(ctx, gitExe, "diff", delta, "--", manifest)
+	has, err := git.HasLinePrefix(ctx, gitExe, lastTag, manifest, "+version ")
 	if err != nil {
 		return false, err
 	}
-	if len(contents) == 0 {
-		return true, nil
-	}
-	lines := strings.Split(contents, "\n")
-	has := func(prefix string) bool {
-		return slices.ContainsFunc(lines, func(line string) bool { return strings.HasPrefix(line, prefix) })
-	}
-	return !has("+version "), nil
+	return !has, nil
 }

@@ -112,6 +112,19 @@ func IsNewFile(ctx context.Context, gitExe, ref, name string) bool {
 	return strings.HasPrefix(output, " create mode ")
 }
 
+// HasLinePrefix returns true if any line in the git diff since the ref starts with the given prefix.
+func HasLinePrefix(ctx context.Context, gitExe, ref, name, prefix string) (bool, error) {
+	delta := fmt.Sprintf("%s..HEAD", ref)
+	contents, err := command.Output(ctx, gitExe, "diff", delta, "--", name)
+	if err != nil {
+		return false, err
+	}
+	lines := strings.Split(contents, "\n")
+	return slices.ContainsFunc(lines, func(line string) bool {
+		return strings.HasPrefix(strings.TrimSpace(line), prefix)
+	}), nil
+}
+
 // CheckVersion checks that the git version command can run.
 func CheckVersion(ctx context.Context, gitExe string) error {
 	return command.Run(ctx, gitExe, "--version")

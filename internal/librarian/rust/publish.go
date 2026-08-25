@@ -163,8 +163,9 @@ func runSemverChecks(ctx context.Context, semverData semverData) error {
 
 // semverCheck runs semver checks for a specific crate.
 func semverCheck(ctx context.Context, semverData semverData, name string, manifest string) error {
-	if git.IsNewFile(ctx, command.Git, semverData.lastTag, manifest) {
-		// If the manifest is new, we can skip semver checks, since there is no previous version to compare against.
+	publishChanged, _ := git.HasLinePrefix(ctx, command.Git, semverData.lastTag, manifest, "-publish")
+	if git.IsNewFile(ctx, command.Git, semverData.lastTag, manifest) || publishChanged {
+		// If the manifest is new or the publish setting has changed, we can skip semver checks.
 		return nil
 	}
 	var err error

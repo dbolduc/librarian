@@ -100,6 +100,61 @@ func TestIsNewFileDiffError(t *testing.T) {
 	}
 }
 
+func TestHasLinePrefix(t *testing.T) {
+	testhelper.SetupForVersionBump(t, "dummy-tag")
+	// Get the HEAD commit hash, which serves as a unique reference for this test.
+	cmd := exec.CommandContext(t.Context(), command.Git, "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	headCommit := strings.TrimSpace(string(out))
+	gitExe := command.Git
+
+	// New manifest
+	manifestPath := path.Join("src", "storage", "Cargo.toml")
+	if err := os.WriteFile(manifestPath, []byte("[package]\nname = \"storage\"\nversion = \"1.0.0\"\npublish = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testhelper.RunGit(t, "add", ".")
+	testhelper.RunGit(t, "commit", "-m", "feat: edit storage cargo", ".")
+	gotVersion, err := HasLinePrefix(t.Context(), gitExe, headCommit, manifestPath, "+version ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotVersion {
+		t.Errorf("expected HasLinePrefix('+version ') == false when version was not added, got true")
+	}
+
+	// Newly published
+	cmd = exec.CommandContext(t.Context(), command.Git, "rev-parse", "HEAD")
+	out, err = cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	headCommit = strings.TrimSpace(string(out))
+
+	if err := os.WriteFile(manifestPath, []byte("[package]\nname = \"storage\"\nversion = \"1.0.0\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testhelper.RunGit(t, "add", ".")
+	testhelper.RunGit(t, "commit", "-m", "feat: remove publish field", ".")
+	gotPublish, err := HasLinePrefix(t.Context(), gitExe, headCommit, manifestPath, "-publish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !gotPublish {
+		t.Errorf("expected HasLinePrefix('-publish') == true when publish = false was removed, got false")
+	}
+	gotVersion, err = HasLinePrefix(t.Context(), gitExe, headCommit, manifestPath, "+version ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotVersion {
+		t.Errorf("expected HasLinePrefix('+version ') == false when version was not added, got true")
+	}
+}
+
 func TestFilesChangedSuccess(t *testing.T) {
 	const wantTag = "release-2001-02-03"
 	remoteDir := testhelper.SetupRepoWithChange(t, wantTag)

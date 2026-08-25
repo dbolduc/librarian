@@ -95,6 +95,61 @@ fi
 	}
 }
 
+func TestPublishCratesWithCrateChangingPublish(t *testing.T) {
+	testhelper.RequireCommand(t, "git")
+	cfg := &config.Config{
+		Tools: &config.Tools{
+			Cargo: []*config.CargoTool{
+				{Name: "cargo-semver-checks", Version: "1.2.3"},
+				{Name: "cargo-workspaces", Version: "3.4.5"},
+			},
+		},
+	}
+	// The fake cargo script will return exit 1 (failure) if semver-checks is run,
+	// because we want to prove that semver-checks is SKIPPED.
+	setupFakeCargoScript(t, `#!/bin/bash
+if [ "$1" == "workspaces" ] && [ "$2" == "plan" ]; then
+	echo "google-cloud-storage"
+elif [ "$1" == "semver-checks" ]; then
+	exit 1
+else
+	exit 0
+fi
+`)
+	remoteDir := testhelper.SetupRepoWithChange(t, "release-2001-02-03")
+	testhelper.CloneRepository(t, remoteDir)
+
+	// Set publish = false at the release tag by committing it and force tagging.
+	manifest := path.Join("src", "storage", "Cargo.toml")
+	if err := os.WriteFile(manifest, []byte("[package]\nname = \"google-cloud-storage\"\nversion = \"0.5.0\"\npublish = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testhelper.RunGit(t, "add", manifest)
+	testhelper.RunGit(t, "commit", "-m", "feat: disable publish on storage", ".")
+	testhelper.RunGit(t, "tag", "-f", "release-2001-02-03")
+
+	// Remove the publish flag (implicitly setting it to true)
+	if err := os.WriteFile(manifest, []byte("[package]\nname = \"google-cloud-storage\"\nversion = \"0.5.0\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testhelper.RunGit(t, "add", manifest)
+	testhelper.RunGit(t, "commit", "-m", "feat: enable publish on storage", ".")
+
+	files := []string{
+		manifest,
+		path.Join("src", "storage", "src", "lib.rs"),
+	}
+	lastTag := "release-2001-02-03"
+
+	// This should succeed because semver-checks is skipped since publish setting changed!
+	if err := publishCrates(t.Context(), PublishParams{
+		Config: cfg,
+		DryRun: true,
+	}, lastTag, files); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPublishCratesWithBadManifest(t *testing.T) {
 	testhelper.RequireCommand(t, "git")
 	cfg := &config.Config{
