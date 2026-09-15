@@ -156,11 +156,7 @@ func newCodec(specificationFormat string, options map[string]string) (*codec, er
 			}
 			codec.lroStubOptions = value
 		case key == "has-veneer":
-			value, err := strconv.ParseBool(definition)
-			if err != nil {
-				return nil, fmt.Errorf("cannot convert `has-veneer` value %q to boolean: %w", definition, err)
-			}
-			codec.hasVeneer = value
+			codec.hasVeneer = splitOption(definition)
 		case key == "extra-modules":
 			codec.extraModules = splitOption(definition)
 		case key == "internal-types":
@@ -340,8 +336,8 @@ type codec struct {
 	detailedTracingAttributes bool
 	// If true, the generated code includes LRO poller options in generated stub traits.
 	lroStubOptions bool
-	// If true, there is a handwritten client surface.
-	hasVeneer bool
+	// List of service IDs that have a handwritten client surface, or ["true"] if all services do.
+	hasVeneer []string
 	// Additional modules, maybe with hand-crafted code.
 	extraModules []string
 	// A list of types which should only be `pub(crate)`.
@@ -1662,6 +1658,13 @@ func (c *codec) hasGrpc(model *api.API) bool {
 		return len(model.Services) > 0
 	}
 	return c.hasStreaming(model)
+}
+
+func (c *codec) serviceHasVeneer(serviceID string) bool {
+	if len(c.hasVeneer) == 1 && c.hasVeneer[0] == "true" {
+		return true
+	}
+	return slices.Contains(c.hasVeneer, serviceID)
 }
 
 // escapeKeyword is the list of Rust keywords and reserved words can be found

@@ -276,7 +276,16 @@ func TestParseOptions(t *testing.T) {
 				"has-veneer": "true",
 			},
 			Update: func(c *codec) {
-				c.hasVeneer = true
+				c.hasVeneer = []string{"true"}
+			},
+		},
+		{
+			Format: libconfig.SpecProtobuf,
+			Options: map[string]string{
+				"has-veneer": ".test.v1.ServiceA,.test.v1.ServiceB",
+			},
+			Update: func(c *codec) {
+				c.hasVeneer = []string{".test.v1.ServiceA", ".test.v1.ServiceB"}
 			},
 		},
 		{
@@ -396,7 +405,6 @@ func TestParseOptionsErrors(t *testing.T) {
 		{Options: map[string]string{"per-service-features": ""}},
 		{Options: map[string]string{"detailed-tracing-attributes": ""}},
 		{Options: map[string]string{"lro-stub-options": ""}},
-		{Options: map[string]string{"has-veneer": ""}},
 		{Options: map[string]string{"routing-required": ""}},
 		{Options: map[string]string{"generate-setter-samples": ""}},
 		{Options: map[string]string{"generate-rpc-samples": ""}},

@@ -547,7 +547,7 @@ This document describes the schema for the librarian.yaml.
 | `included_ids` | list of string | Is a list of IDs to include. |
 | `skipped_ids` | list of string | Is a list of IDs to skip. |
 | `disabled_clippy_warnings` | list of string | Is a list of clippy warnings to disable. |
-| `has_veneer` | bool | Indicates whether the crate has a veneer. |
+| `has_veneer` | string | Indicates whether the crate has a veneer. Accepts "true" for all services, or a comma-separated list of service IDs. |
 | `routing_required` | bool | Indicates whether routing is required. |
 | `include_grpc_only_methods` | bool | Indicates whether to include gRPC-only methods. |
 | `idempotency_hook` | string | Configures an opt-in method on the request struct to resolve and transform idempotency request options before dispatch. |
@@ -596,7 +596,7 @@ This document describes the schema for the librarian.yaml.
 | `extend_grpc_transport` | bool | Indicates whether the transport stub can be extended (in order to support streams). |
 | `generate_setter_samples` | string | Indicates whether to generate setter samples. |
 | `generate_rpc_samples` | string | Indicates whether to generate RPC samples. |
-| `has_veneer` | bool | Indicates whether this module has a handwritten wrapper. |
+| `has_veneer` | string | Indicates whether this module has a handwritten wrapper. Accepts "true" for all services, or a comma-separated list of service IDs. |
 | `included_ids` | list of string | Is a list of proto IDs to include in generation. |
 | `include_grpc_only_methods` | bool | Indicates whether to include gRPC-only methods. |
 | `idempotency_hook` | string | Configures an opt-in method on the request struct to resolve and transform idempotency request options before dispatch. |

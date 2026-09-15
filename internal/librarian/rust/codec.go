@@ -156,8 +156,8 @@ func buildCodec(library *config.Library, releaseLevel string) map[string]string 
 	if rust.DefaultTransport != "" {
 		codec["default-transport"] = rust.DefaultTransport
 	}
-	if rust.HasVeneer {
-		codec["has-veneer"] = "true"
+	if rust.HasVeneer != "" {
+		codec["has-veneer"] = rust.HasVeneer
 	}
 	if rust.RoutingRequired {
 		codec["routing-required"] = "true"
@@ -318,8 +318,8 @@ func buildModuleCodec(library *config.Library, module *config.RustModule) map[st
 	if module.GenerateRpcSamples != "" {
 		codec["generate-rpc-samples"] = module.GenerateRpcSamples
 	}
-	if module.HasVeneer {
-		codec["has-veneer"] = "true"
+	if module.HasVeneer != "" {
+		codec["has-veneer"] = module.HasVeneer
 	}
 	if module.IncludeGrpcOnlyMethods {
 		codec["include-grpc-only-methods"] = "true"

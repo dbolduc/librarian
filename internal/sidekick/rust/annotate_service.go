@@ -215,7 +215,7 @@ func (c *codec) annotateService(s *api.Service) (*serviceAnnotations, error) {
 		LROTypes:                  lroTypes,
 		APITitle:                  s.Model.Title,
 		PerServiceFeatures:        c.perServiceFeatures,
-		HasVeneer:                 c.hasVeneer,
+		HasVeneer:                 c.serviceHasVeneer(s.ID),
 		ExtendGrpcTransport:       c.extendGrpcTransport,
 		Incomplete:                slices.ContainsFunc(s.Methods, func(m *api.Method) bool { return !c.generateMethod(m) }),
 		DetailedTracingAttributes: c.detailedTracingAttributes,

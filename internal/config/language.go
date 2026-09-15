@@ -175,7 +175,8 @@ type RustModule struct {
 	GenerateRpcSamples string `yaml:"generate_rpc_samples,omitempty"`
 
 	// HasVeneer indicates whether this module has a handwritten wrapper.
-	HasVeneer bool `yaml:"has_veneer,omitempty"`
+	// Accepts "true" for all services, or a comma-separated list of service IDs.
+	HasVeneer string `yaml:"has_veneer,omitempty"`
 
 	// IncludedIds is a list of proto IDs to include in generation.
 	IncludedIds []string `yaml:"included_ids,omitempty"`
@@ -280,7 +281,8 @@ type RustCrate struct {
 	DisabledClippyWarnings []string `yaml:"disabled_clippy_warnings,omitempty"`
 
 	// HasVeneer indicates whether the crate has a veneer.
-	HasVeneer bool `yaml:"has_veneer,omitempty"`
+	// Accepts "true" for all services, or a comma-separated list of service IDs.
+	HasVeneer string `yaml:"has_veneer,omitempty"`
 
 	// RoutingRequired indicates whether routing is required.
 	RoutingRequired bool `yaml:"routing_required,omitempty"`

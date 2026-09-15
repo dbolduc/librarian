@@ -193,7 +193,7 @@ func TestLibraryToModelConfig(t *testing.T) {
 					PerServiceFeatures:      true,
 					IncludeGrpcOnlyMethods:  true,
 					IncludeStreamingMethods: true,
-					HasVeneer:               true,
+					HasVeneer:               "true",
 					RoutingRequired:         true,
 					DisabledClippyWarnings:  []string{"too_many_arguments"},
 					DefaultFeatures:         []string{"default-feature"},
@@ -1140,10 +1140,20 @@ func TestBuildModuleCodec(t *testing.T) {
 			name:    "with HasVeneer",
 			library: &config.Library{},
 			module: &config.RustModule{
-				HasVeneer: true,
+				HasVeneer: "true",
 			},
 			want: map[string]string{
 				"has-veneer": "true",
+			},
+		},
+		{
+			name:    "with HasVeneer service list",
+			library: &config.Library{},
+			module: &config.RustModule{
+				HasVeneer: ".google.cloud.foo.v1.ServiceA,.google.cloud.foo.v1.ServiceB",
+			},
+			want: map[string]string{
+				"has-veneer": ".google.cloud.foo.v1.ServiceA,.google.cloud.foo.v1.ServiceB",
 			},
 		},
 		{
@@ -1322,7 +1332,7 @@ func TestBuildModuleCodec(t *testing.T) {
 			module: &config.RustModule{
 				GenerateSetterSamples:     "true",
 				GenerateRpcSamples:        "false",
-				HasVeneer:                 true,
+				HasVeneer:                 "true",
 				IncludeGrpcOnlyMethods:    true,
 				IncludeStreamingMethods:   true,
 				DetailedTracingAttributes: new(true),
@@ -1446,7 +1456,7 @@ func TestBuildCodec(t *testing.T) {
 					IncludeGrpcOnlyMethods:    true,
 					IncludeStreamingMethods:   true,
 					PerServiceFeatures:        true,
-					HasVeneer:                 true,
+					HasVeneer:                 "true",
 					RoutingRequired:           true,
 					NameOverrides:             "foo=bar",
 					QuickstartServiceOverride: "OverriddenService",
