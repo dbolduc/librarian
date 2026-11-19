@@ -1457,7 +1457,6 @@ func TestBuildCodec(t *testing.T) {
 					IncludeStreamingMethods:   true,
 					PerServiceFeatures:        true,
 					HasVeneer:                 true,
-					ExtensibleBuilders:        []string{".a.b.Service.Method1", ".a.b.Service.Method2"},
 					RoutingRequired:           true,
 					NameOverrides:             "foo=bar",
 					QuickstartServiceOverride: "OverriddenService",
@@ -1475,7 +1474,6 @@ func TestBuildCodec(t *testing.T) {
 				"per-service-features":        "true",
 				"detailed-tracing-attributes": "true",
 				"has-veneer":                  "true",
-				"extensible-builders":         ".a.b.Service.Method1,.a.b.Service.Method2",
 				"routing-required":            "true",
 				"generate-setter-samples":     "true",
 				"generate-rpc-samples":        "true",
@@ -1642,54 +1640,6 @@ func TestBuildModuleCodec_IdempotencyHook(t *testing.T) {
 		got := buildModuleCodec(library, module)
 		if got["idempotency-hook"] != "module_hook" {
 			t.Errorf("expected idempotency-hook to be %q, got %q", "module_hook", got["idempotency-hook"])
-		}
-	})
-}
-
-func TestBuildModuleCodec_ExtensibleBuilders(t *testing.T) {
-	t.Run("module level extensible_builders", func(t *testing.T) {
-		library := &config.Library{
-			Name: "google-cloud-bigquery",
-		}
-		module := &config.RustModule{
-			ExtensibleBuilders: []string{".google.cloud.bigquery.storage.v1.BigQueryRead.ReadRows"},
-		}
-		got := buildModuleCodec(library, module)
-		want := ".google.cloud.bigquery.storage.v1.BigQueryRead.ReadRows"
-		if got["extensible-builders"] != want {
-			t.Errorf("expected extensible-builders to be %q, got %q", want, got["extensible-builders"])
-		}
-	})
-
-	t.Run("crate level fallback extensible_builders", func(t *testing.T) {
-		library := &config.Library{
-			Name: "google-cloud-bigquery",
-			Rust: &config.RustCrate{
-				ExtensibleBuilders: []string{".google.cloud.bigquery.storage.v1.BigQueryRead.ReadRows"},
-			},
-		}
-		module := &config.RustModule{}
-		got := buildModuleCodec(library, module)
-		want := ".google.cloud.bigquery.storage.v1.BigQueryRead.ReadRows"
-		if got["extensible-builders"] != want {
-			t.Errorf("expected extensible-builders to be %q, got %q", want, got["extensible-builders"])
-		}
-	})
-
-	t.Run("module overrides crate level extensible_builders", func(t *testing.T) {
-		library := &config.Library{
-			Name: "google-cloud-bigquery",
-			Rust: &config.RustCrate{
-				ExtensibleBuilders: []string{".a.b.CrateMethod"},
-			},
-		}
-		module := &config.RustModule{
-			ExtensibleBuilders: []string{".a.b.ModuleMethod"},
-		}
-		got := buildModuleCodec(library, module)
-		want := ".a.b.ModuleMethod"
-		if got["extensible-builders"] != want {
-			t.Errorf("expected extensible-builders to be %q, got %q", want, got["extensible-builders"])
 		}
 	})
 }

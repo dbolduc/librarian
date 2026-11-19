@@ -153,7 +153,7 @@ func TestGenerateServerStreaming(t *testing.T) {
 			file:     "src/builder.rs",
 			startStr: "    #[derive(Clone, Debug)]\n    pub struct Expand(",
 			endStr:   ");",
-			want:     "    #[derive(Clone, Debug)]\n    pub struct Expand(RequestBuilder<crate::model::ExpandRequest>);",
+			want:     "    #[derive(Clone, Debug)]\n    pub struct Expand(pub(crate) RequestBuilder<crate::model::ExpandRequest>);",
 		},
 		{
 			name:     "builder: send method",

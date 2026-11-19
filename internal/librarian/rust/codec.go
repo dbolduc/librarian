@@ -207,9 +207,6 @@ func newLibraryCodec(library *config.Library) map[string]string {
 		if len(library.Rust.DisabledClippyWarnings) > 0 {
 			codec["disabled-clippy-warnings"] = strings.Join(library.Rust.DisabledClippyWarnings, ",")
 		}
-		if len(library.Rust.ExtensibleBuilders) > 0 {
-			codec["extensible-builders"] = strings.Join(library.Rust.ExtensibleBuilders, ",")
-		}
 	}
 	return codec
 }
@@ -399,9 +396,6 @@ func buildModuleCodec(library *config.Library, module *config.RustModule) map[st
 	}
 	if module.InternalBuilders {
 		codec["internal-builders"] = "true"
-	}
-	if len(module.ExtensibleBuilders) > 0 {
-		codec["extensible-builders"] = strings.Join(module.ExtensibleBuilders, ",")
 	}
 	grpcClient := ""
 	if library.Rust != nil {

@@ -65,9 +65,9 @@ pub mod {{ .Codec.ModuleName }} {
     /// Common implementation for [crate::client::{{ .Codec.Name }}] request builders.
     #[derive(Clone, Debug)]
     pub(crate) struct RequestBuilder<R: std::default::Default> {
-        {{ if .Codec.HasExtensibleBuilder }}pub(crate) {{ end }}stub: std::sync::Arc<dyn super::super::stub::dynamic::{{ .Codec.Name }}>,
-        {{ if .Codec.HasExtensibleBuilder }}pub(crate) {{ end }}request: R,
-        {{ if .Codec.HasExtensibleBuilder }}pub(crate) {{ end }}options: crate::RequestOptions,
+        pub(crate) stub: std::sync::Arc<dyn super::super::stub::dynamic::{{ .Codec.Name }}>,
+        pub(crate) request: R,
+        pub(crate) options: crate::RequestOptions,
     }
 
     impl<R> RequestBuilder<R>
@@ -86,8 +86,8 @@ pub mod {{ .Codec.ModuleName }} {
     /// Common implementation for [crate::client::{{ .Codec.Name }}] bidi stream builders.
     #[derive(Clone, Debug)]
     pub(crate) struct BidiStreamBuilder {
-        stub: std::sync::Arc<dyn super::super::stub::dynamic::{{ .Codec.Name }}>,
-        options: crate::RequestOptions,
+        pub(crate) stub: std::sync::Arc<dyn super::super::stub::dynamic::{{ .Codec.Name }}>,
+        pub(crate) options: crate::RequestOptions,
     }
 
     impl BidiStreamBuilder {
@@ -164,10 +164,16 @@ pub mod {{ .Codec.ModuleName }} {
     {{- end }}
     {{- if .Codec.IsBidiStreaming }}
     #[derive(Clone, Debug)]
-    {{ .Codec.BuilderVisibility }} struct {{ .Codec.BuilderName }}(BidiStreamBuilder);
+    {{ .Codec.BuilderVisibility }} struct {{ .Codec.BuilderName }}(pub(crate) BidiStreamBuilder);
+    {{- else if .Codec.NeedsBuilderRustfmtSkip }}
+    #[derive(Clone, Debug)]
+    {{ .Codec.BuilderVisibility }} struct {{ .Codec.BuilderName }}(
+        #[rustfmt::skip]
+        pub(crate) RequestBuilder<{{ .InputType.Codec.QualifiedName }}>,
+    );
     {{- else }}
     #[derive(Clone, Debug)]
-    {{ .Codec.BuilderVisibility }} struct {{ .Codec.BuilderName }}({{ if .Codec.ExtensibleBuilder }}pub(crate) {{ end }}RequestBuilder<{{ .InputType.Codec.QualifiedName }}>);
+    {{ .Codec.BuilderVisibility }} struct {{ .Codec.BuilderName }}(pub(crate) RequestBuilder<{{ .InputType.Codec.QualifiedName }}>);
     {{- end }}
 
     impl {{ .Codec.BuilderName }} {

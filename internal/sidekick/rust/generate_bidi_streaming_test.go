@@ -162,7 +162,7 @@ func TestGenerateBidiStreaming(t *testing.T) {
 			file:     "src/builder.rs",
 			startStr: "    #[derive(Clone, Debug)]\n    pub struct Chat(",
 			endStr:   ");",
-			want:     "    #[derive(Clone, Debug)]\n    pub struct Chat(BidiStreamBuilder);",
+			want:     "    #[derive(Clone, Debug)]\n    pub struct Chat(pub(crate) BidiStreamBuilder);",
 		},
 		{
 			name:     "builder: build method",
@@ -373,16 +373,16 @@ func TestGenerateGrpcClientBidiStreaming(t *testing.T) {
 			startStr: "    pub(crate) struct BidiStreamBuilder {",
 			endStr:   "    }",
 			want: `    pub(crate) struct BidiStreamBuilder {
-        stub: std::sync::Arc<dyn super::super::stub::dynamic::Protocol>,
-        options: crate::RequestOptions,
+        pub(crate) stub: std::sync::Arc<dyn super::super::stub::dynamic::Protocol>,
+        pub(crate) options: crate::RequestOptions,
     }`,
 		},
 		{
 			name:     "grpc-client builder: request builder impl",
 			file:     "builder.rs",
-			startStr: "    pub struct Chat(BidiStreamBuilder);\n\n    impl Chat {",
+			startStr: "    pub struct Chat(pub(crate) BidiStreamBuilder);\n\n    impl Chat {",
 			endStr:   "        }\n    }",
-			want: `    pub struct Chat(BidiStreamBuilder);
+			want: `    pub struct Chat(pub(crate) BidiStreamBuilder);
 
     impl Chat {
         pub(crate) fn new(stub: std::sync::Arc<dyn super::super::stub::dynamic::Protocol>) -> Self {

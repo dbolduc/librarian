@@ -302,7 +302,7 @@ func TestServiceAnnotationsNameOverrides(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", diff)
 	}
 
-	methodFilter := cmpopts.IgnoreFields(methodAnnotation{}, "Name", "NameNoMangling", "BuilderName", "Body", "PathInfo", "SystemParameters", "ReturnType", "IsGrpc")
+	methodFilter := cmpopts.IgnoreFields(methodAnnotation{}, "Name", "NameNoMangling", "BuilderName", "Body", "PathInfo", "SystemParameters", "InputTypeName", "ReturnType", "IsGrpc")
 	wantMethod := &methodAnnotation{
 		ServiceNameToPascal: "Renamed",
 		ServiceNameToCamel:  "renamed",
@@ -360,6 +360,7 @@ func TestServiceAnnotations(t *testing.T) {
 		ServiceNameToPascal: "ResourceService",
 		ServiceNameToCamel:  "resourceService",
 		ServiceNameToSnake:  "resource_service",
+		InputTypeName:       "crate::model::Request",
 		ReturnType:          "crate::model::Response",
 	}
 	if diff := cmp.Diff(wantMethod, method.Codec(), cmpopts.IgnoreUnexported(pathBindingAnnotation{}, bindingSubstitution{}), apitest.AllowUnexported()); diff != "" {
@@ -378,6 +379,7 @@ func TestServiceAnnotations(t *testing.T) {
 		ServiceNameToPascal: "ResourceService",
 		ServiceNameToCamel:  "resourceService",
 		ServiceNameToSnake:  "resource_service",
+		InputTypeName:       "crate::model::Request",
 		ReturnType:          "()",
 	}
 	if diff := cmp.Diff(wantMethod, emptyMethod.Codec(), cmpopts.IgnoreUnexported(pathBindingAnnotation{}, bindingSubstitution{}), apitest.AllowUnexported()); diff != "" {
@@ -635,64 +637,6 @@ func TestServiceAnnotationsClassification(t *testing.T) {
 			}
 			if got := serviceAnn.IsHybrid(); got != test.isHybrid {
 				t.Errorf("serviceAnnotations.IsHybrid() = %v, want %v", got, test.isHybrid)
-			}
-		})
-	}
-}
-
-func TestServiceAnnotationsHasExtensibleBuilder(t *testing.T) {
-	for _, test := range []struct {
-		name               string
-		extensibleBuilders string
-		wantService0       bool
-		wantService1       bool
-	}{
-		{
-			name:               "none",
-			extensibleBuilders: "",
-			wantService0:       false,
-			wantService1:       false,
-		},
-		{
-			name:               "only Service0 method",
-			extensibleBuilders: "..Service0.get",
-			wantService0:       true,
-			wantService1:       false,
-		},
-		{
-			name:               "both services",
-			extensibleBuilders: "..Service0.get,..Service1.get",
-			wantService0:       true,
-			wantService1:       true,
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			model := newTestAnnotateModelAPI(t)
-			service0 := model.Service("..Service0")
-			if service0 == nil {
-				t.Fatal("cannot find ..Service0")
-			}
-			service1 := model.Service("..Service1")
-			if service1 == nil {
-				t.Fatal("cannot find ..Service1")
-			}
-			options := map[string]string{
-				"include-grpc-only-methods": "true",
-			}
-			if test.extensibleBuilders != "" {
-				options["extensible-builders"] = test.extensibleBuilders
-			}
-			codec := newTestCodec(t, libconfig.SpecProtobuf, "", options)
-			if _, err := annotateModel(model, codec); err != nil {
-				t.Fatal(err)
-			}
-			ann0 := service0.Codec.(*serviceAnnotations)
-			if got := ann0.HasExtensibleBuilder(); got != test.wantService0 {
-				t.Errorf("Service0 HasExtensibleBuilder() = %v, want %v", got, test.wantService0)
-			}
-			ann1 := service1.Codec.(*serviceAnnotations)
-			if got := ann1.HasExtensibleBuilder(); got != test.wantService1 {
-				t.Errorf("Service1 HasExtensibleBuilder() = %v, want %v", got, test.wantService1)
 			}
 		})
 	}

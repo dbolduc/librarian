@@ -35,6 +35,7 @@ type methodAnnotation struct {
 	ServiceNameToSnake        string
 	OperationInfo             *operationInfo
 	SystemParameters          []systemParameter
+	InputTypeName             string
 	ReturnType                string
 	HasVeneer                 bool
 	Attributes                []string
@@ -46,7 +47,6 @@ type methodAnnotation struct {
 	GrpcResourceNameArgs      []string
 	IsLroPoller               bool
 	IsDiscoveryLro            bool
-	ExtensibleBuilder         bool
 	ClientSideStreaming       bool
 	ServerSideStreaming       bool
 	IsGrpc                    bool
@@ -97,6 +97,19 @@ func (m *methodAnnotation) BuilderVisibility() string {
 		return "pub(crate)"
 	}
 	return "pub"
+}
+
+// maxRequestBuilderTypeLen is the maximum length of T in
+// `        pub(crate) RequestBuilder<T>,` (36 fixed columns + len(T)) that fits
+// within rustfmt's 100-column limit. Longer types trigger an upstream rustfmt
+// bug ("left behind trailing whitespace") when wrapping after `pub(crate) `.
+const maxRequestBuilderTypeLen = 100 - len("        pub(crate) RequestBuilder<>,")
+
+// NeedsBuilderRustfmtSkip reports whether the generated request builder tuple
+// struct needs `#[rustfmt::skip]` on its inner field to avoid an upstream
+// rustfmt trailing-whitespace error on long `pub(crate) RequestBuilder<T>` lines.
+func (m *methodAnnotation) NeedsBuilderRustfmtSkip() bool {
+	return !m.IsBidiStreaming() && len(m.InputTypeName) > maxRequestBuilderTypeLen
 }
 
 type pathInfoAnnotation struct {
@@ -331,6 +344,10 @@ func (c *codec) annotateMethod(m *api.Method) (*methodAnnotation, error) {
 			variant.SetAnnotations(routingVariantAnnotations)
 		}
 	}
+	inputTypeName, err := c.methodInOutTypeName(m.InputTypeID(), m.Model(), m.Model().PackageName)
+	if err != nil {
+		return nil, err
+	}
 	returnType, err := c.methodInOutTypeName(m.OutputTypeID(), m.Model(), m.Model().PackageName)
 	if err != nil {
 		return nil, err
@@ -364,6 +381,7 @@ func (c *codec) annotateMethod(m *api.Method) (*methodAnnotation, error) {
 		ServiceNameToCamel:        toCamel(serviceName),
 		ServiceNameToSnake:        toSnake(serviceName),
 		SystemParameters:          systemParameters,
+		InputTypeName:             inputTypeName,
 		ReturnType:                returnType,
 		HasVeneer:                 hasVeneer,
 		RoutingRequired:           c.routingRequired,
@@ -372,7 +390,6 @@ func (c *codec) annotateMethod(m *api.Method) (*methodAnnotation, error) {
 		GenerateRpcSamples:        generateRpcSamples,
 		IsLroPoller:               m.IsLroPoller(),
 		IsDiscoveryLro:            isDiscoveryLro(m),
-		ExtensibleBuilder:         slices.Contains(c.extensibleBuilders, m.ID()),
 		ClientSideStreaming:       m.ClientSideStreaming(),
 		ServerSideStreaming:       m.ServerSideStreaming(),
 		IsGrpc:                    c.methodUsesGrpc(m),

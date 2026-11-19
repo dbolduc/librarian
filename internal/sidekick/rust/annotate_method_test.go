@@ -15,6 +15,7 @@
 package rust
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -51,6 +52,7 @@ func TestAnnotateMethodNames(t *testing.T) {
 				ServiceNameToPascal: "ResourceService",
 				ServiceNameToCamel:  "resourceService",
 				ServiceNameToSnake:  "resource_service",
+				InputTypeName:       "crate::model::Request",
 				ReturnType:          "crate::model::Response",
 			},
 		},
@@ -64,6 +66,7 @@ func TestAnnotateMethodNames(t *testing.T) {
 				ServiceNameToPascal: "ResourceService",
 				ServiceNameToCamel:  "resourceService",
 				ServiceNameToSnake:  "resource_service",
+				InputTypeName:       "crate::model::Request",
 				ReturnType:          "()",
 			},
 		},
@@ -77,6 +80,7 @@ func TestAnnotateMethodNames(t *testing.T) {
 				ServiceNameToPascal: "ResourceService",
 				ServiceNameToCamel:  "resourceService",
 				ServiceNameToSnake:  "resource_service",
+				InputTypeName:       "crate::model::Request",
 				ReturnType:          "crate::model::Response",
 			},
 		},
@@ -383,7 +387,7 @@ func TestAnnotateMethodResourceNameTemplate(t *testing.T) {
 			if diff := cmp.Diff(test.want, got, cmpopts.IgnoreFields(methodAnnotation{},
 				"Name", "NameNoMangling", "BuilderName", "Body", "DocLines",
 				"ServiceNameToPascal", "ServiceNameToCamel", "ServiceNameToSnake",
-				"SystemParameters", "ReturnType", "PathInfo", "Attributes",
+				"SystemParameters", "InputTypeName", "ReturnType", "PathInfo", "Attributes",
 				"RoutingRequired", "DetailedTracingAttributes",
 				"ResourceNameTemplateGrpc", "GrpcResourceNameArgs",
 				"InternalBuilders")); diff != "" {
@@ -723,32 +727,47 @@ func TestAnnotateMethodIdempotencyHook(t *testing.T) {
 	}
 }
 
-func TestAnnotateMethodExtensibleBuilders(t *testing.T) {
-	model := annotateMethodModel(t)
-	if err := api.CrossReference(model); err != nil {
-		t.Fatal(err)
-	}
-	codec := newTestCodec(t, libconfig.SpecProtobuf, "", map[string]string{
-		"include-grpc-only-methods": "true",
-		"extensible-builders":       ".test.v1.ResourceService.Delete",
-	})
-	if _, err := annotateModel(model, codec); err != nil {
-		t.Fatal(err)
-	}
-
-	deleteMethod := model.Method(".test.v1.ResourceService.Delete")
-	if deleteMethod == nil {
-		t.Fatal("missing method .test.v1.ResourceService.Delete")
-	}
-	if !deleteMethod.Codec().(*methodAnnotation).ExtensibleBuilder {
-		t.Error("expected ExtensibleBuilder to be true for .test.v1.ResourceService.Delete")
-	}
-
-	moveMethod := model.Method(".test.v1.ResourceService.move")
-	if moveMethod == nil {
-		t.Fatal("missing method .test.v1.ResourceService.move")
-	}
-	if moveMethod.Codec().(*methodAnnotation).ExtensibleBuilder {
-		t.Error("expected ExtensibleBuilder to be false for .test.v1.ResourceService.move")
+func TestNeedsBuilderRustfmtSkip(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		ann  methodAnnotation
+		want bool
+	}{
+		{
+			name: "short input type fits within 100 columns",
+			ann:  methodAnnotation{InputTypeName: "crate::model::GetSecretRequest"},
+			want: false,
+		},
+		{
+			name: "exact 64-char boundary fits within 100 columns",
+			ann:  methodAnnotation{InputTypeName: strings.Repeat("X", 64)},
+			want: false,
+		},
+		{
+			name: "65-char input type exceeds 100 columns and needs skip",
+			ann:  methodAnnotation{InputTypeName: strings.Repeat("X", 65)},
+			want: true,
+		},
+		{
+			name: "long module path request needs skip",
+			ann:  methodAnnotation{InputTypeName: "crate::write::generated::gapic_storage::model::CreateReadSessionRequest"},
+			want: true,
+		},
+		{
+			name: "bidi streaming uses BidiStreamBuilder and never needs skip",
+			ann: methodAnnotation{
+				InputTypeName:       strings.Repeat("X", 80),
+				ClientSideStreaming: true,
+				ServerSideStreaming: true,
+				IsGrpc:              true,
+			},
+			want: false,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.ann.NeedsBuilderRustfmtSkip(); got != test.want {
+				t.Errorf("NeedsBuilderRustfmtSkip() = %v, want %v (len=%d)", got, test.want, len(test.ann.InputTypeName))
+			}
+		})
 	}
 }
