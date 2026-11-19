@@ -307,13 +307,13 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
         {{- end }}
         {{- if .Codec.HasResourceNameGeneration }}
         {{- if .Codec.DetailedTracingAttributes }}
-        let (builder, method, _path_template, _resource_name) = None
+        let (builder, method, path_template, resource_name) = None
         {{- else }}
         let (builder, method, _resource_name) = None
         {{- end }}
         {{- else }}
         {{- if .Codec.DetailedTracingAttributes }}
-        let (builder, method, _path_template) = None
+        let (builder, method, path_template) = None
         {{- else }}
         let (builder, method) = None
         {{- end }}
@@ -405,9 +405,9 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
             recorder.on_client_request(
                 gaxi::observability::ClientRequestAttributes::default()
                     .set_rpc_method("{{ .SourceService.Package }}.{{ .SourceService.Name }}/{{ .Name }}")
-                    .set_url_template(_path_template)
+                    .set_url_template(path_template)
                     {{- if .Codec.HasResourceNameGeneration }}
-                    .set_resource_name(_resource_name)
+                    .set_resource_name(resource_name)
                     {{- end }}
             );
         }
