@@ -185,16 +185,7 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
         {{- else }}
         let options = google_cloud_gax::options::internal::set_default_idempotency(
             options,
-            {{- /* TODO(#2588) - resolve this in the model */}}
-            {{- if .HasAutoPopulatedFields }}
-            true,
-            {{- else }}
-            {{- with .PathInfo }}
             {{ .Codec.IsIdempotent }},
-            {{- else }}
-            false,
-            {{- end }}
-            {{- end }}
         );
         {{- end }}
         let extensions = {

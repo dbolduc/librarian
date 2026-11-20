@@ -198,16 +198,7 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
         use gaxi::{prost::ToProto, grpc::tonic::{GrpcMethod, Extensions}};
         let options = google_cloud_gax::options::internal::set_default_idempotency(
             options,
-            {{- /* TODO(#2588) - resolve this in the model */}}
-            {{- if .HasAutoPopulatedFields }}
-            true,
-            {{- else }}
-            {{- with .PathInfo }}
             {{ .Codec.IsIdempotent }},
-            {{- else }}
-            false,
-            {{- end }}
-            {{- end }}
         );
         let extensions = {
             let mut e = Extensions::new();
@@ -287,16 +278,10 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
         let mut req = req;
         {{- end }}
         {{- end }}
-        {{- if .HasAutoPopulatedFields }}
-        let options = google_cloud_gax::options::internal::set_default_idempotency(
-            options,
-            true,
-        );
-        {{- end }}
         {{- if .Codec.HasResourceNameGeneration }}
-        let (builder, method, path_template, resource_name) = None
+        let (builder, method, path_template, idempotency, resource_name) = None
         {{- else }}
-        let (builder, method, path_template) = None
+        let (builder, method, path_template, idempotency) = None
         {{- end }}
         {{- range .PathInfo.Bindings }}
         .or_else(|| {
@@ -347,9 +332,9 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
             let builder = Ok(builder);
             {{- end }}
             {{- if .Codec.HasResourceNameGeneration }}
-            Some(builder.map(|b| (b, Method::{{ .Verb }}, path_template, resource_name)))
+            Some(builder.map(|b| (b, Method::{{ .Verb }}, path_template, {{ .Codec.IsIdempotent }}, resource_name)))
             {{- else }}
-            Some(builder.map(|b| (b, Method::{{ .Verb }}, path_template)))
+            Some(builder.map(|b| (b, Method::{{ .Verb }}, path_template, {{ .Codec.IsIdempotent }})))
             {{- end }}
         })
         {{- end }}
@@ -382,8 +367,7 @@ impl super::stub::{{ .Codec.Name }} for {{ .Codec.Name }} {
         }
         let options = google_cloud_gax::options::internal::set_default_idempotency(
             options,
-            {{- /* TODO(#4156) - return idempotency from the above closure */}}
-            gaxi::http::default_idempotency(&method),
+            idempotency,
         );
         let builder = builder
                 {{- range .Codec.SystemParameters }}

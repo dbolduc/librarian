@@ -269,7 +269,7 @@ func TestServiceAnnotationsNameOverrides(t *testing.T) {
 		t.Errorf("mismatch (-want +got):\n%s", diff)
 	}
 
-	methodFilter := cmpopts.IgnoreFields(methodAnnotation{}, "Name", "NameNoMangling", "BuilderName", "Body", "PathInfo", "SystemParameters", "ReturnType", "IsGrpc")
+	methodFilter := cmpopts.IgnoreFields(methodAnnotation{}, "Name", "NameNoMangling", "BuilderName", "Body", "PathInfo", "SystemParameters", "ReturnType", "IsGrpc", "IsIdempotent")
 	wantMethod := &methodAnnotation{
 		ServiceNameToPascal: "Renamed",
 		ServiceNameToCamel:  "renamed",
@@ -328,6 +328,7 @@ func TestServiceAnnotations(t *testing.T) {
 		ServiceNameToCamel:  "resourceService",
 		ServiceNameToSnake:  "resource_service",
 		ReturnType:          "crate::model::Response",
+		IsIdempotent:        true,
 	}
 	if diff := cmp.Diff(wantMethod, method.Codec(), cmpopts.IgnoreUnexported(pathBindingAnnotation{}, bindingSubstitution{}), apitest.AllowUnexported()); diff != "" {
 		t.Errorf("mismatch (-want +got):\n%s", diff)
@@ -346,6 +347,7 @@ func TestServiceAnnotations(t *testing.T) {
 		ServiceNameToCamel:  "resourceService",
 		ServiceNameToSnake:  "resource_service",
 		ReturnType:          "()",
+		IsIdempotent:        true,
 	}
 	if diff := cmp.Diff(wantMethod, emptyMethod.Codec(), cmpopts.IgnoreUnexported(pathBindingAnnotation{}, bindingSubstitution{}), apitest.AllowUnexported()); diff != "" {
 		t.Errorf("mismatch (-want +got):\n%s", diff)

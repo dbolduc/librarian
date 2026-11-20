@@ -65,6 +65,7 @@ func TestAnnotateMethodNames(t *testing.T) {
 				ServiceNameToCamel:  "resourceService",
 				ServiceNameToSnake:  "resource_service",
 				ReturnType:          "()",
+				IsIdempotent:        true,
 			},
 		},
 		{
@@ -78,6 +79,7 @@ func TestAnnotateMethodNames(t *testing.T) {
 				ServiceNameToCamel:  "resourceService",
 				ServiceNameToSnake:  "resource_service",
 				ReturnType:          "crate::model::Response",
+				IsIdempotent:        true,
 			},
 		},
 	} {
@@ -384,14 +386,14 @@ func TestAnnotateMethodResourceNameTemplate(t *testing.T) {
 				"SystemParameters", "ReturnType", "PathInfo", "Attributes",
 				"RoutingRequired",
 				"ResourceNameTemplateGrpc", "GrpcResourceNameArgs",
-				"InternalBuilders")); diff != "" {
+				"InternalBuilders", "IsIdempotent")); diff != "" {
 				t.Errorf("mismatch (-want +got):\n%s", diff)
 			}
 
 			if test.wantBindings != nil {
 				for i, wantBinding := range test.wantBindings {
 					gotBinding := m.PathInfo().Bindings()[i].Codec().(*pathBindingAnnotation)
-					if diff := cmp.Diff(wantBinding, gotBinding, cmpopts.IgnoreFields(pathBindingAnnotation{}, "PathFmt", "QueryParams", "Substitutions")); diff != "" {
+					if diff := cmp.Diff(wantBinding, gotBinding, cmpopts.IgnoreFields(pathBindingAnnotation{}, "PathFmt", "QueryParams", "Substitutions", "IsIdempotent")); diff != "" {
 						t.Errorf("mismatch (-want +got):\n%s", diff)
 					}
 				}

@@ -71,7 +71,7 @@ func serviceAnnotationsModel() *api.API {
 	return model
 }
 
-func TestPathInfoAnnotations(t *testing.T) {
+func TestDefaultIdempotencyAnnotations(t *testing.T) {
 	binding := func(verb string) *api.PathBinding {
 		return api.NewPathBindingBuilder().
 			WithVerb(verb).
@@ -83,27 +83,42 @@ func TestPathInfoAnnotations(t *testing.T) {
 	}
 
 	for _, test := range []struct {
-		name               string
-		Bindings           []*api.PathBinding
-		DefaultIdempotency string
+		name          string
+		nilPathInfo   bool
+		bindings      []*api.PathBinding
+		autoPopulated bool
+		wantMethod    bool
+		wantBindings  []bool
 	}{
-		{"empty", []*api.PathBinding{}, "false"},
-		{"GET", []*api.PathBinding{binding("GET")}, "true"},
-		{"PUT", []*api.PathBinding{binding("PUT")}, "true"},
-		{"DELETE", []*api.PathBinding{binding("DELETE")}, "true"},
-		{"POST", []*api.PathBinding{binding("POST")}, "false"},
-		{"PATCH", []*api.PathBinding{binding("PATCH")}, "false"},
-		{"GET_GET", []*api.PathBinding{binding("GET"), binding("GET")}, "true"},
-		{"GET_POST", []*api.PathBinding{binding("GET"), binding("POST")}, "false"},
-		{"POST_POST", []*api.PathBinding{binding("POST"), binding("POST")}, "false"},
+		{name: "nil_path_info", nilPathInfo: true, wantMethod: false},
+		{name: "empty", bindings: []*api.PathBinding{}, wantMethod: false},
+		{name: "GET", bindings: []*api.PathBinding{binding("GET")}, wantMethod: true, wantBindings: []bool{true}},
+		{name: "PUT", bindings: []*api.PathBinding{binding("PUT")}, wantMethod: true, wantBindings: []bool{true}},
+		{name: "DELETE", bindings: []*api.PathBinding{binding("DELETE")}, wantMethod: true, wantBindings: []bool{true}},
+		{name: "POST", bindings: []*api.PathBinding{binding("POST")}, wantMethod: false, wantBindings: []bool{false}},
+		{name: "PATCH", bindings: []*api.PathBinding{binding("PATCH")}, wantMethod: false, wantBindings: []bool{false}},
+		{name: "GET_GET", bindings: []*api.PathBinding{binding("GET"), binding("GET")}, wantMethod: true, wantBindings: []bool{true, true}},
+		{name: "GET_POST", bindings: []*api.PathBinding{binding("GET"), binding("POST")}, wantMethod: false, wantBindings: []bool{true, false}},
+		{name: "POST_POST", bindings: []*api.PathBinding{binding("POST"), binding("POST")}, wantMethod: false, wantBindings: []bool{false, false}},
+		{name: "POST_auto_populated", bindings: []*api.PathBinding{binding("POST")}, autoPopulated: true, wantMethod: true, wantBindings: []bool{true}},
+		{name: "GET_POST_auto_populated", bindings: []*api.PathBinding{binding("GET"), binding("POST")}, autoPopulated: true, wantMethod: true, wantBindings: []bool{true, true}},
+		{name: "nil_path_info_auto_populated", nilPathInfo: true, autoPopulated: true, wantMethod: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			request := api.NewTestMessage("Request").WithPackage("test.v1")
+			reqIDField := api.NewTestField("request_id").WithType(api.TypezString)
+			request := api.NewTestMessage("Request").WithPackage("test.v1").WithFields(reqIDField)
 			response := api.NewTestMessage("Response").WithPackage("test.v1")
 			method := api.NewTestMethod("GetResource").
 				WithInput(request).
-				WithOutput(response).
-				WithBindings(test.Bindings...)
+				WithOutput(response)
+			if test.nilPathInfo {
+				method.WithPathInfo(nil)
+			} else {
+				method.WithBindings(test.bindings...)
+			}
+			if test.autoPopulated {
+				method.WithAutoPopulated(reqIDField)
+			}
 			service := api.NewTestService("ResourceService").
 				WithPackage("test.v1").
 				WithMethods(method)
@@ -112,15 +127,28 @@ func TestPathInfoAnnotations(t *testing.T) {
 				[]*api.Message{request, response},
 				nil,
 				[]*api.Service{service})
-			api.CrossReference(model)
+			if err := api.CrossReference(model); err != nil {
+				t.Fatal(err)
+			}
 			codec := newTestCodec(t, libconfig.SpecProtobuf, "test.v1", map[string]string{
 				"include-grpc-only-methods": "true",
 			})
-			annotateModel(model, codec)
+			if _, err := annotateModel(model, codec); err != nil {
+				t.Fatal(err)
+			}
 
-			pathInfoAnn := method.PathInfo().Codec().(*pathInfoAnnotation)
-			if pathInfoAnn.IsIdempotent != test.DefaultIdempotency {
-				t.Errorf("fail")
+			methodAnn := method.Codec().(*methodAnnotation)
+			if methodAnn.IsIdempotent != test.wantMethod {
+				t.Errorf("methodAnn.IsIdempotent = %v, want %v", methodAnn.IsIdempotent, test.wantMethod)
+			}
+			if len(test.wantBindings) > 0 {
+				var gotBindings []bool
+				for _, b := range method.PathInfo().Bindings() {
+					gotBindings = append(gotBindings, b.Codec().(*pathBindingAnnotation).IsIdempotent)
+				}
+				if diff := cmp.Diff(test.wantBindings, gotBindings); diff != "" {
+					t.Errorf("binding IsIdempotent mismatch (-want +got):\n%s", diff)
+				}
 			}
 		})
 	}
@@ -268,8 +296,9 @@ func TestPathBindingAnnotations(t *testing.T) {
 		WithQueryParameters("name", "optional", "child").
 		Build()
 	wantB3 := &pathBindingAnnotation{
-		PathFmt:     "/v2/foos",
-		QueryParams: []*api.Field{fName, fOptional, fChild},
+		PathFmt:      "/v2/foos",
+		QueryParams:  []*api.Field{fName, fOptional, fChild},
+		IsIdempotent: true,
 	}
 	b4 := api.NewPathBindingBuilder().
 		WithVerb("POST").
@@ -361,7 +390,8 @@ func TestPathBindingAnnotationsStyle(t *testing.T) {
 			WithQueryParameters().
 			Build()
 		wantBinding := &pathBindingAnnotation{
-			PathFmt: "/v1/machines/{}:create",
+			PathFmt:      "/v1/machines/{}:create",
+			IsIdempotent: true,
 			Substitutions: []*bindingSubstitution{
 				{
 					FieldAccessor:  test.WantAccessor,
@@ -666,7 +696,6 @@ func TestBindingSubstitutionIsString(t *testing.T) {
 				IsString:      true,
 			},
 		},
-		IsIdempotent: "true",
 	}
 	if diff := cmp.Diff(wantStringAnn, stringAnn); diff != "" {
 		t.Errorf("StringOnly mismatch (-want +got):\n%s", diff)
@@ -721,7 +750,6 @@ func TestBindingSubstitutionIsString(t *testing.T) {
 				IsString:      false,
 			},
 		},
-		IsIdempotent: "true",
 	}
 	if diff := cmp.Diff(wantMixedAnn, mixedAnn); diff != "" {
 		t.Errorf("Mixed mismatch (-want +got):\n%s", diff)

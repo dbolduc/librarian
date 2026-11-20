@@ -753,7 +753,7 @@ func (c *codec) fullyQualifiedEnumValueName(v *api.EnumValue, sourceSpecificatio
 }
 
 func bodyAccessor(m *api.Method) string {
-	if m.PathInfo().BodyFieldPath() == "" {
+	if m.PathInfo() == nil || m.PathInfo().BodyFieldPath() == "" {
 		return "None::<gaxi::http::NoBody>"
 	}
 	if m.PathInfo().BodyFieldPath() == "*" {

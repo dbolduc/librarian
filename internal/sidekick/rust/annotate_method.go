@@ -49,6 +49,7 @@ type methodAnnotation struct {
 	ClientSideStreaming       bool
 	ServerSideStreaming       bool
 	IsGrpc                    bool
+	IsIdempotent              bool
 	GenerateRpcSamples        bool
 	HasIdempotencyHook        bool
 	IdempotencyHook           string
@@ -111,11 +112,6 @@ type pathInfoAnnotation struct {
 	//
 	// Templates are ignored. We only care about the FieldName and FieldAccessor.
 	UniqueParameters []*bindingSubstitution
-
-	// Whether this is idempotent by default
-	//
-	// This is only used for gRPC-based clients.
-	IsIdempotent string
 }
 
 // HasNonStringParameters returns true if any unique parameter is not a string field.
@@ -242,6 +238,9 @@ type pathBindingAnnotation struct {
 
 	// The variables to be substituted into the path
 	Substitutions []*bindingSubstitution
+
+	// Whether this binding is idempotent by default.
+	IsIdempotent bool
 
 	// Resource name generation fields, propagated from method scope.
 	HasResourceNameGeneration bool
@@ -371,6 +370,7 @@ func (c *codec) annotateMethod(m *api.Method) (*methodAnnotation, error) {
 		ClientSideStreaming: m.ClientSideStreaming(),
 		ServerSideStreaming: m.ServerSideStreaming(),
 		IsGrpc:              c.methodUsesGrpc(m),
+		IsIdempotent:        defaultMethodIdempotency(m),
 	}
 
 	if c.idempotencyHook != "" {
@@ -627,6 +627,7 @@ func (c *codec) annotatePathBinding(b *api.PathBinding, m *api.Method) (*pathBin
 		PathFmt:       httpPathFmt(b.PathTemplate()),
 		QueryParams:   language.QueryParams(m, b),
 		Substitutions: subs,
+		IsIdempotent:  m.HasAutoPopulatedFields() || defaultIdempotencyFromVerb(b.Verb()),
 	}
 	return binding, nil
 }
@@ -660,7 +661,6 @@ func (c *codec) annotatePathInfo(m *api.Method) error {
 	m.PathInfo().SetAnnotations(&pathInfoAnnotation{
 		HasBody:          m.PathInfo().BodyFieldPath() != "",
 		UniqueParameters: uniqueParameters,
-		IsIdempotent:     isIdempotent(m.PathInfo()),
 	})
 	return nil
 }
@@ -783,17 +783,23 @@ func formatResourceNameArgs(fieldPaths [][]string) []string {
 	return args
 }
 
-func isIdempotent(p *api.PathInfo) string {
-	bindings := p.Bindings()
-	if len(bindings) == 0 {
-		return "false"
+func defaultMethodIdempotency(m *api.Method) bool {
+	if m.HasAutoPopulatedFields() {
+		return true
 	}
-	for _, b := range bindings {
-		if b.Verb() == "POST" || b.Verb() == "PATCH" {
-			return "false"
+	if m.PathInfo() == nil || len(m.PathInfo().Bindings()) == 0 {
+		return false
+	}
+	for _, b := range m.PathInfo().Bindings() {
+		if !defaultIdempotencyFromVerb(b.Verb()) {
+			return false
 		}
 	}
-	return "true"
+	return true
+}
+
+func defaultIdempotencyFromVerb(verb string) bool {
+	return verb == "GET" || verb == "PUT" || verb == "DELETE"
 }
 
 func (c *codec) methodUsesGrpc(m *api.Method) bool {
